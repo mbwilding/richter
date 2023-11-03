@@ -323,7 +323,7 @@ impl World {
         let total_addr =
             (ent_fld_addr.entity_id.0 * self.type_def.addr_count() + ent_fld_addr.field_addr.0) * 4;
 
-        if total_addr > ::std::i32::MAX as usize {
+        if total_addr > std::i32::MAX as usize {
             panic!("ent_fld_addr_to_i32: total_addr overflow");
         }
 
@@ -394,18 +394,18 @@ impl World {
                     // this is referred to in the original source as "anglehack" -- essentially,
                     // only the yaw (Y) value is given. see
                     // https://github.com/id-Software/Quake/blob/master/WinQuake/pr_edict.c#L826-L834
-                    let def = self.find_def("angles")?.clone();
+                    let def = self.find_def("angles")?;
                     ent.put_vector([0.0, val.parse().unwrap(), 0.0], def.offset as i16)?;
                 }
 
                 "light" => {
                     // more fun hacks brought to you by Carmack & Friends
-                    let def = self.find_def("light_lev")?.clone();
+                    let def = self.find_def("light_lev")?;
                     ent.put_float(val.parse().unwrap(), def.offset as i16)?;
                 }
 
                 k => {
-                    let def = self.find_def(k)?.clone();
+                    let def = self.find_def(k)?;
 
                     match def.type_ {
                         // void has no value, skip it

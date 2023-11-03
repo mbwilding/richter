@@ -90,9 +90,13 @@ pub enum SpriteFrame {
 pub struct SpriteSubframe {
     width: u32,
     height: u32,
+    #[allow(dead_code)]
     up: f32,
+    #[allow(dead_code)]
     down: f32,
+    #[allow(dead_code)]
     left: f32,
+    #[allow(dead_code)]
     right: f32,
     indexed: Vec<u8>,
 }

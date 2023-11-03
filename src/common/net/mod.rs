@@ -44,6 +44,7 @@ const MAX_PACKET: usize = HEADER_SIZE + MAX_DATAGRAM;
 
 pub const PROTOCOL_VERSION: u8 = 15;
 
+#[allow(dead_code)]
 const NAME_LEN: usize = 64;
 
 const FAST_UPDATE_FLAG: u8 = 0x80;
@@ -57,7 +58,7 @@ const PARTICLE_DIRECTION_WRITE_FACTOR: f32 = 1.0 / PARTICLE_DIRECTION_READ_FACTO
 const SOUND_ATTENUATION_WRITE_FACTOR: u8 = 64;
 const SOUND_ATTENUATION_READ_FACTOR: f32 = 1.0 / SOUND_ATTENUATION_WRITE_FACTOR as f32;
 
-pub static GAME_NAME: &'static str = "QUAKE";
+pub static GAME_NAME: &str = "QUAKE";
 pub const MAX_CLIENTS: usize = 16;
 pub const MAX_ITEMS: usize = 32;
 
@@ -65,7 +66,7 @@ pub const DEFAULT_VIEWHEIGHT: f32 = 22.0;
 
 #[derive(Debug)]
 pub enum NetError {
-    Io(::std::io::Error),
+    Io(std::io::Error),
     InvalidData(String),
     Other(String),
 }
@@ -102,8 +103,8 @@ impl Error for NetError {
     }
 }
 
-impl From<::std::io::Error> for NetError {
-    fn from(error: ::std::io::Error) -> Self {
+impl From<std::io::Error> for NetError {
+    fn from(error: std::io::Error) -> Self {
         NetError::Io(error)
     }
 }
@@ -168,6 +169,7 @@ bitflags! {
 }
 
 bitflags! {
+    #[derive(Clone, Copy, Debug, PartialEq)]
     pub struct ItemFlags: u32 {
         const SHOTGUN          = 0x00000001;
         const SUPER_SHOTGUN    = 0x00000002;
@@ -200,7 +202,8 @@ bitflags! {
 }
 
 bitflags! {
-    pub struct ButtonFlags: u8 {
+    #[derive(Clone, Copy, Debug, PartialEq)]
+    pub struct  ButtonFlags: u8 {
         const ATTACK = 0x01;
         const JUMP = 0x02;
     }
@@ -237,7 +240,7 @@ impl PlayerColor {
     }
 }
 
-impl ::std::convert::From<u8> for PlayerColor {
+impl From<u8> for PlayerColor {
     fn from(src: u8) -> PlayerColor {
         PlayerColor {
             top: src << 4,
@@ -493,6 +496,7 @@ pub enum SignOnStage {
 }
 
 bitflags! {
+    #[derive(Clone, Copy, Debug, PartialEq)]
     pub struct EntityEffects: u8 {
         const BRIGHT_FIELD = 0b0001;
         const MUZZLE_FLASH = 0b0010;
@@ -834,7 +838,7 @@ impl ServerCmd {
     {
         let code_num = match reader.read_u8() {
             Ok(c) => c,
-            Err(ref e) if e.kind() == ::std::io::ErrorKind::UnexpectedEof => return Ok(None),
+            Err(ref e) if e.kind() == std::io::ErrorKind::UnexpectedEof => return Ok(None),
             Err(e) => return Err(NetError::from(e)),
         };
 
@@ -1520,12 +1524,12 @@ impl ServerCmd {
             ServerCmd::Time { time } => writer.write_f32::<LittleEndian>(time)?,
 
             ServerCmd::Print { ref text } => {
-                writer.write(text.as_bytes())?;
+                writer.write_all(text.as_bytes())?;
                 writer.write_u8(0)?;
             }
 
             ServerCmd::StuffText { ref text } => {
-                writer.write(text.as_bytes())?;
+                writer.write_all(text.as_bytes())?;
                 writer.write_u8(0)?;
             }
 
@@ -1543,17 +1547,17 @@ impl ServerCmd {
                 writer.write_u8(max_clients)?;
                 writer.write_u8(game_type as u8)?;
 
-                writer.write(message.as_bytes())?;
+                writer.write_all(message.as_bytes())?;
                 writer.write_u8(0)?;
 
                 for model_name in model_precache.iter() {
-                    writer.write(model_name.as_bytes())?;
+                    writer.write_all(model_name.as_bytes())?;
                     writer.write_u8(0)?;
                 }
                 writer.write_u8(0)?;
 
                 for sound_name in sound_precache.iter() {
-                    writer.write(sound_name.as_bytes())?;
+                    writer.write_all(sound_name.as_bytes())?;
                     writer.write_u8(0)?;
                 }
                 writer.write_u8(0)?;
@@ -1561,7 +1565,7 @@ impl ServerCmd {
 
             ServerCmd::LightStyle { id, ref value } => {
                 writer.write_u8(id)?;
-                writer.write(value.as_bytes())?;
+                writer.write_all(value.as_bytes())?;
                 writer.write_u8(0)?;
             }
 
@@ -1570,7 +1574,7 @@ impl ServerCmd {
                 ref new_name,
             } => {
                 writer.write_u8(player_id)?;
-                writer.write(new_name.as_bytes())?;
+                writer.write_all(new_name.as_bytes())?;
                 writer.write_u8(0)?;
             }
 
@@ -1719,8 +1723,8 @@ impl ServerCmd {
 
                 for i in 0..3 {
                     writer.write_i8(match direction[i] * PARTICLE_DIRECTION_WRITE_FACTOR {
-                        d if d > ::std::i8::MAX as f32 => ::std::i8::MAX,
-                        d if d < ::std::i8::MIN as f32 => ::std::i8::MIN,
+                        d if d > std::i8::MAX as f32 => std::i8::MAX,
+                        d if d < std::i8::MIN as f32 => std::i8::MIN,
                         d => d as i8,
                     })?;
                 }
@@ -1795,7 +1799,7 @@ impl ServerCmd {
             }
 
             ServerCmd::CenterPrint { ref text } => {
-                writer.write(text.as_bytes())?;
+                writer.write_all(text.as_bytes())?;
                 writer.write_u8(0)?;
             }
 
@@ -1816,7 +1820,7 @@ impl ServerCmd {
             ServerCmd::Intermission => (),
 
             ServerCmd::Finale { ref text } => {
-                writer.write(text.as_bytes())?;
+                writer.write_all(text.as_bytes())?;
                 writer.write_u8(0)?;
             }
 
@@ -1828,7 +1832,7 @@ impl ServerCmd {
             ServerCmd::SellScreen => (),
 
             ServerCmd::Cutscene { ref text } => {
-                writer.write(text.as_bytes())?;
+                writer.write_all(text.as_bytes())?;
                 writer.write_u8(0)?;
             }
 
@@ -1966,7 +1970,7 @@ impl ClientCmd {
                 writer.write_u8(impulse)?;
             }
             ClientCmd::StringCmd { ref cmd } => {
-                writer.write(cmd.as_bytes())?;
+                writer.write_all(cmd.as_bytes())?;
                 writer.write_u8(0)?;
             }
         }
@@ -2355,6 +2359,7 @@ where
     Ok(Deg(reader.read_i8()? as f32 * (360.0 / 256.0)))
 }
 
+#[allow(dead_code)]
 fn read_angle_vector3<R>(reader: &mut R) -> Result<Vector3<Deg<f32>>, NetError>
 where
     R: BufRead + ReadBytesExt,

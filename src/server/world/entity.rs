@@ -38,7 +38,7 @@ pub const STATIC_ADDRESS_COUNT: usize = 105;
 
 #[derive(Debug)]
 pub enum EntityError {
-    Io(::std::io::Error),
+    Io(std::io::Error),
     Address(isize),
     Other(String),
 }
@@ -67,8 +67,8 @@ impl fmt::Display for EntityError {
 
 impl Error for EntityError {}
 
-impl From<::std::io::Error> for EntityError {
-    fn from(error: ::std::io::Error) -> Self {
+impl From<std::io::Error> for EntityError {
+    fn from(error: std::io::Error) -> Self {
         EntityError::Io(error)
     }
 }
@@ -439,6 +439,7 @@ pub enum EntitySolid {
 
 #[derive(Debug)]
 pub struct Entity {
+    #[allow(dead_code)]
     string_table: Rc<RefCell<StringTable>>,
     type_def: Rc<EntityTypeDef>,
     addrs: Box<[[u8; 4]]>,
@@ -472,21 +473,14 @@ impl Entity {
             .iter()
             .find(|def| def.type_ != Type::QVoid && def.offset as usize == addr)
         {
-            Some(d) => {
-                if type_ == d.type_ {
-                    return Ok(());
-                } else if type_ == Type::QFloat && d.type_ == Type::QVector {
-                    return Ok(());
-                } else if type_ == Type::QVector && d.type_ == Type::QFloat {
-                    return Ok(());
-                } else {
-                    return Err(EntityError::with_msg(format!(
-                        "type check failed: addr={} expected={:?} actual={:?}",
-                        addr, type_, d.type_
-                    )));
-                }
-            }
-            None => return Ok(()),
+            Some(d) if type_ == d.type_ => Ok(()),
+            Some(d) if type_ == Type::QFloat && d.type_ == Type::QVector => Ok(()),
+            Some(d) if type_ == Type::QVector && d.type_ == Type::QFloat => Ok(()),
+            Some(d) => Err(EntityError::with_msg(format!(
+                "type check failed: addr={} expected={:?} actual={:?}",
+                addr, type_, d.type_
+            ))),
+            None => Ok(()),
         }
     }
 
@@ -700,7 +694,7 @@ impl Entity {
 
     pub fn model_index(&self) -> Result<usize, EntityError> {
         let model_index = self.get_float(FieldAddrFloat::ModelIndex as i16)?;
-        if model_index < 0.0 || model_index > ::std::usize::MAX as f32 {
+        if model_index < 0.0 || model_index > std::usize::MAX as f32 {
             Err(EntityError::with_msg(format!(
                 "Invalid value for entity.model_index ({})",
                 model_index,

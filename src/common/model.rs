@@ -44,6 +44,7 @@ pub enum SyncType {
 }
 
 bitflags! {
+    #[derive(Debug, Copy, Clone)]
     pub struct ModelFlags: u8 {
         const ROCKET  = 0b00000001;
         const GRENADE = 0b00000010;

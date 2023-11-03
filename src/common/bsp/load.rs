@@ -37,7 +37,6 @@ use crate::common::{
 use super::{BspTextureFrame, BspTextureKind};
 use byteorder::{LittleEndian, ReadBytesExt};
 use cgmath::{InnerSpace, Vector3};
-use chrono::Duration;
 use failure::ResultExt as _;
 use num::FromPrimitive;
 use thiserror::Error;
@@ -64,14 +63,29 @@ const MAX_VISLIST: usize = 0x100000;
 const TEX_NAME_MAX: usize = 16;
 
 const NUM_AMBIENTS: usize = 4;
+
+#[allow(dead_code)]
 const MAX_TEXTURE_FRAMES: usize = 10;
+
+#[allow(dead_code)]
 const TEXTURE_FRAME_LEN_MS: i64 = 200;
 
+#[allow(dead_code)]
 const ASCII_0: usize = '0' as usize;
+
+#[allow(dead_code)]
 const ASCII_9: usize = '9' as usize;
+
+#[allow(dead_code)]
 const ASCII_CAPITAL_A: usize = 'A' as usize;
+
+#[allow(dead_code)]
 const ASCII_CAPITAL_J: usize = 'J' as usize;
+
+#[allow(dead_code)]
 const ASCII_SMALL_A: usize = 'a' as usize;
+
+#[allow(dead_code)]
 const ASCII_SMALL_J: usize = 'j' as usize;
 
 #[derive(Error, Debug)]
@@ -267,7 +281,7 @@ where
 {
     // convert texture name from NUL-terminated to str
     let mut tex_name_bytes = [0u8; TEX_NAME_MAX];
-    reader.read(&mut tex_name_bytes)?;
+    reader.read_exact(&mut tex_name_bytes)?;
     let len = tex_name_bytes
         .iter()
         .enumerate()
@@ -874,7 +888,7 @@ where
         let facelist_id = reader.read_u16::<LittleEndian>()? as usize;
         let facelist_count = reader.read_u16::<LittleEndian>()? as usize;
         let mut sounds = [0u8; NUM_AMBIENTS];
-        reader.read(&mut sounds)?;
+        reader.read_exact(&mut sounds)?;
         leaves.push(BspLeaf {
             contents,
             vis_offset,
@@ -943,10 +957,10 @@ where
     for (face_id, face) in faces.iter_mut().enumerate() {
         let texinfo = &texinfo[face.texinfo_id];
 
-        let mut s_min = ::std::f32::INFINITY;
-        let mut t_min = ::std::f32::INFINITY;
-        let mut s_max = ::std::f32::NEG_INFINITY;
-        let mut t_max = ::std::f32::NEG_INFINITY;
+        let mut s_min = std::f32::INFINITY;
+        let mut t_min = std::f32::INFINITY;
+        let mut s_max = std::f32::NEG_INFINITY;
+        let mut t_max = std::f32::NEG_INFINITY;
 
         for edge_idx in &edgelist[face.edge_id..face.edge_id + face.edge_count] {
             let vertex_id = edges[edge_idx.index].vertex_ids[edge_idx.direction as usize] as usize;

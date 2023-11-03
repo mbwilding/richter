@@ -43,6 +43,7 @@ use failure::Error;
 use log::info;
 
 pub struct Game {
+    #[allow(dead_code)]
     cvars: Rc<RefCell<CvarRegistry>>,
     cmds: Rc<RefCell<CmdRegistry>>,
     input: Rc<RefCell<Input>>,
@@ -141,7 +142,7 @@ impl Game {
         color_attachment_view: &wgpu::TextureView,
         width: u32,
         height: u32,
-        console: &Console,
+        _console: &Console,
         menu: &Menu,
     ) {
         info!("Beginning render pass");
@@ -170,6 +171,7 @@ impl Game {
                     texture: gfx_state.final_pass_target().resolve_attachment(),
                     mip_level: 0,
                     origin: wgpu::Origin3d::ZERO,
+                    aspect: Default::default(),
                 },
             );
             cap

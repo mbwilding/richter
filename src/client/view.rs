@@ -23,6 +23,7 @@ pub struct View {
     ideal_pitch: Deg<f32>,
 
     // view angles from the server
+    #[allow(dead_code)]
     msg_angles: [Angles; 2],
 
     // view angles from client input

@@ -708,7 +708,7 @@ mod tests {
                 expire: Duration::seconds(*t),
             })
             .collect();
-        let mut after_update: Vec<Particle> = Vec::new();
+        let after_update: Vec<Particle> = Vec::new();
         list.update(Duration::seconds(5), Duration::milliseconds(17), 10.0);
         after_update
             .iter()

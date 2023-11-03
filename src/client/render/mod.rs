@@ -71,7 +71,7 @@ use std::{
     borrow::Cow,
     cell::{Cell, Ref, RefCell, RefMut},
     mem::size_of,
-    num::{NonZeroU32, NonZeroU64, NonZeroU8},
+    num::NonZeroU64,
     rc::Rc,
 };
 
@@ -99,8 +99,6 @@ use crate::{
     },
     common::{
         console::{Console, CvarRegistry},
-        model::Model,
-        net::SignOnStage,
         vfs::Vfs,
         wad::Wad,
     },
@@ -108,8 +106,8 @@ use crate::{
 
 use super::ConnectionState;
 use bumpalo::Bump;
-use cgmath::{Deg, InnerSpace, Vector3, Zero};
-use chrono::{DateTime, Duration, Utc};
+use cgmath::{Deg, Vector3, Zero};
+use chrono::{DateTime, Utc};
 use failure::Error;
 
 const DEPTH_ATTACHMENT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
@@ -122,8 +120,8 @@ const FULLBRIGHT_TEXTURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Un
 const LIGHTMAP_TEXTURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
 
 /// Create a `wgpu::TextureDescriptor` appropriate for the provided texture data.
-pub fn texture_descriptor<'a>(
-    label: Option<&'a str>,
+pub fn texture_descriptor(
+    label: Option<&str>,
     width: u32,
     height: u32,
     format: wgpu::TextureFormat,
@@ -139,7 +137,8 @@ pub fn texture_descriptor<'a>(
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format,
-        usage: wgpu::TextureUsage::COPY_DST | wgpu::TextureUsage::SAMPLED,
+        usage: wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING, // RENDER_ATTACHMENT
+        view_formats: &[],
     }
 }
 
@@ -163,11 +162,12 @@ pub fn create_texture<'a>(
             texture: &texture,
             mip_level: 0,
             origin: wgpu::Origin3d::ZERO,
+            aspect: Default::default(),
         },
         data.data(),
         wgpu::ImageDataLayout {
             offset: 0,
-            bytes_per_row: NonZeroU32::new(width * data.stride()),
+            bytes_per_row: Some(width * data.stride()),
             rows_per_image: None,
         },
         wgpu::Extent3d {
@@ -308,7 +308,7 @@ impl GraphicsState {
         let frame_uniform_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("frame uniform buffer"),
             size: size_of::<world::FrameUniforms>() as wgpu::BufferAddress,
-            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
         let entity_uniform_buffer = RefCell::new(DynamicUniformBuffer::new(&device));
@@ -322,10 +322,10 @@ impl GraphicsState {
             min_filter: wgpu::FilterMode::Linear,
             mipmap_filter: wgpu::FilterMode::Nearest,
             // TODO: these are the OpenGL defaults; see if there's a better choice for us
-            lod_min_clamp: -1000.0,
+            lod_min_clamp: 0.0,
             lod_max_clamp: 1000.0,
             compare: None,
-            anisotropy_clamp: NonZeroU8::new(16),
+            anisotropy_clamp: 1, // 16
             ..Default::default()
         });
 
@@ -338,10 +338,10 @@ impl GraphicsState {
             min_filter: wgpu::FilterMode::Linear,
             mipmap_filter: wgpu::FilterMode::Nearest,
             // TODO: these are the OpenGL defaults; see if there's a better choice for us
-            lod_min_clamp: -1000.0,
+            lod_min_clamp: 0.0,
             lod_max_clamp: 1000.0,
             compare: None,
-            anisotropy_clamp: NonZeroU8::new(16),
+            anisotropy_clamp: 1, // 16
             ..Default::default()
         });
 

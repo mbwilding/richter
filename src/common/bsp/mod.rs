@@ -124,7 +124,6 @@ use crate::common::math::{Hyperplane, HyperplaneSide, LinePlaneIntersect};
 
 // TODO: Either Trace should be moved into common or the functions requiring it should be moved into server
 use crate::server::world::{Trace, TraceEnd, TraceStart};
-
 use cgmath::Vector3;
 use chrono::Duration;
 
@@ -137,6 +136,8 @@ pub const MAX_LIGHTMAPS: usize = 64;
 pub const MAX_LIGHTSTYLES: usize = 4;
 pub const MAX_SOUNDS: usize = 4;
 pub const MIPLEVELS: usize = 4;
+
+#[allow(dead_code)]
 const DIST_EPSILON: f32 = 0.03125;
 
 pub fn frame_duration() -> Duration {
@@ -145,7 +146,7 @@ pub fn frame_duration() -> Duration {
 
 #[derive(Debug)]
 pub enum BspError {
-    Io(::std::io::Error),
+    Io(std::io::Error),
     Other(String),
 }
 
@@ -159,7 +160,7 @@ impl BspError {
 }
 
 impl fmt::Display for BspError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             BspError::Io(ref err) => err.fmt(f),
             BspError::Other(ref msg) => write!(f, "{}", msg),
@@ -168,16 +169,16 @@ impl fmt::Display for BspError {
 }
 
 impl Error for BspError {
-    fn description(&self) -> &str {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
         match *self {
-            BspError::Io(ref err) => err.description(),
-            BspError::Other(ref msg) => &msg,
+            BspError::Io(ref err) => Some(err),
+            BspError::Other(_) => None,
         }
     }
 }
 
-impl From<::std::io::Error> for BspError {
-    fn from(error: ::std::io::Error) -> Self {
+impl From<std::io::Error> for BspError {
+    fn from(error: std::io::Error) -> Self {
         BspError::Io(error)
     }
 }
@@ -360,6 +361,7 @@ pub struct BspCollisionHull {
     planes: Rc<Box<[Hyperplane]>>,
     nodes: Rc<Box<[BspCollisionNode]>>,
     node_id: usize,
+    #[allow(dead_code)]
     node_count: usize,
     mins: Vector3<f32>,
     maxs: Vector3<f32>,

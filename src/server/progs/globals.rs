@@ -47,7 +47,7 @@ pub const GLOBAL_ADDR_ARG_7: usize = 25;
 
 #[derive(Debug)]
 pub enum GlobalsError {
-    Io(::std::io::Error),
+    Io(std::io::Error),
     Address(isize),
     Other(String),
 }
@@ -76,8 +76,8 @@ impl fmt::Display for GlobalsError {
 
 impl Error for GlobalsError {}
 
-impl From<::std::io::Error> for GlobalsError {
-    fn from(error: ::std::io::Error) -> Self {
+impl From<std::io::Error> for GlobalsError {
+    fn from(error: std::io::Error) -> Self {
         GlobalsError::Io(error)
     }
 }
@@ -229,6 +229,7 @@ pub enum GlobalAddrFunction {
 
 #[derive(Debug)]
 pub struct Globals {
+    #[allow(dead_code)]
     string_table: Rc<RefCell<StringTable>>,
     defs: Box<[GlobalDef]>,
     addrs: Box<[[u8; 4]]>,
@@ -255,18 +256,11 @@ impl Globals {
     /// `origin_X` will have the same address).
     pub fn type_check(&self, addr: usize, type_: Type) -> Result<(), GlobalsError> {
         match self.defs.iter().find(|def| def.offset as usize == addr) {
-            Some(d) => {
-                if type_ == d.type_ {
-                    return Ok(());
-                } else if type_ == Type::QFloat && d.type_ == Type::QVector {
-                    return Ok(());
-                } else if type_ == Type::QVector && d.type_ == Type::QFloat {
-                    return Ok(());
-                } else {
-                    return Err(GlobalsError::with_msg("type check failed"));
-                }
-            }
-            None => return Ok(()),
+            Some(d) if type_ == d.type_ => Ok(()),
+            Some(d) if type_ == Type::QFloat && d.type_ == Type::QVector => Ok(()),
+            Some(d) if type_ == Type::QVector && d.type_ == Type::QFloat => Ok(()),
+            Some(_) => Err(GlobalsError::with_msg("type check failed")),
+            None => Ok(()),
         }
     }
 

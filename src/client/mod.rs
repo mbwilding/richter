@@ -81,7 +81,7 @@ const MAX_STATS: usize = 32;
 const DEFAULT_SOUND_PACKET_VOLUME: u8 = 255;
 const DEFAULT_SOUND_PACKET_ATTENUATION: f32 = 1.0;
 
-const CONSOLE_DIVIDER: &'static str = "\
+const CONSOLE_DIVIDER: &str = "\
 \n\n\
 \x1D\x1E\x1E\x1E\x1E\x1E\x1E\x1E\
 \x1E\x1E\x1E\x1E\x1E\x1E\x1E\x1E\
@@ -946,7 +946,7 @@ impl Client {
                 cl_nolerp,
                 sv_gravity,
             )?,
-            None => ConnectionStatus::Disconnect,
+            None => Disconnect,
         };
 
         use ConnectionStatus::*;
@@ -1189,7 +1189,7 @@ impl Client {
     }
 }
 
-impl std::ops::Drop for Client {
+impl Drop for Client {
     fn drop(&mut self) {
         // if this errors, it was already removed so we don't care
         let _ = self.cmds.borrow_mut().remove("reconnect");

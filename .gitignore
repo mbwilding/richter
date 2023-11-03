@@ -1,4 +1,3 @@
-Cargo.lock
 site/public
 target
 *.bak
@@ -6,3 +5,4 @@ target
 *.pak
 *.pak.d
 .#*
+**/.idea/

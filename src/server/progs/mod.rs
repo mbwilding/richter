@@ -144,7 +144,7 @@ const DEF_SIZE: usize = 8;
 
 #[derive(Debug)]
 pub enum ProgsError {
-    Io(::std::io::Error),
+    Io(std::io::Error),
     Globals(GlobalsError),
     Entity(EntityError),
     CallStackOverflow,
@@ -186,8 +186,8 @@ impl fmt::Display for ProgsError {
 
 impl Error for ProgsError {}
 
-impl From<::std::io::Error> for ProgsError {
-    fn from(error: ::std::io::Error) -> Self {
+impl From<std::io::Error> for ProgsError {
+    fn from(error: std::io::Error) -> Self {
         ProgsError::Io(error)
     }
 }
@@ -212,7 +212,7 @@ impl TryInto<i32> for StringId {
     type Error = ProgsError;
 
     fn try_into(self) -> Result<i32, Self::Error> {
-        if self.0 > ::std::i32::MAX as usize {
+        if self.0 > std::i32::MAX as usize {
             Err(ProgsError::with_msg("string id out of i32 range"))
         } else {
             Ok(self.0 as i32)
@@ -271,9 +271,11 @@ struct Lump {
 
 #[derive(Debug)]
 pub struct GlobalDef {
+    #[allow(dead_code)]
     save: bool,
     type_: Type,
     offset: u16,
+    #[allow(dead_code)]
     name_id: StringId,
 }
 
@@ -382,7 +384,7 @@ where
 
         let argc = src.read_i32::<LittleEndian>()?;
         let mut argsz = [0; MAX_ARGS];
-        src.read(&mut argsz)?;
+        src.read_exact(&mut argsz)?;
 
         function_defs.push(FunctionDef {
             kind,
@@ -492,7 +494,7 @@ where
     let mut addrs = Vec::with_capacity(globals_lump.count);
     for _ in 0..globals_lump.count {
         let mut block = [0; 4];
-        src.read(&mut block)?;
+        src.read_exact(&mut block)?;
 
         // TODO: handle endian conversions (BigEndian systems should use BigEndian internally)
         addrs.push(block);

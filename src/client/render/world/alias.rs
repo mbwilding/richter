@@ -106,7 +106,7 @@ impl Pipeline for AliasPipeline {
                     // diffuse texture, updated once per face
                     wgpu::BindGroupLayoutEntry {
                         binding: 0,
-                        visibility: wgpu::ShaderStage::FRAGMENT,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Texture {
                             view_dimension: wgpu::TextureViewDimension::D2,
                             sample_type: wgpu::TextureSampleType::Float { filterable: true },
@@ -135,7 +135,7 @@ impl Pipeline for AliasPipeline {
     fn vertex_buffer_layouts() -> Vec<wgpu::VertexBufferLayout<'static>> {
         vec![wgpu::VertexBufferLayout {
             array_stride: size_of::<AliasVertex>() as u64,
-            step_mode: wgpu::InputStepMode::Vertex,
+            step_mode: wgpu::VertexStepMode::Vertex,
             attributes: &VERTEX_ATTRIBUTES[..],
         }]
     }
@@ -191,12 +191,16 @@ impl Keyframe {
 
 enum Texture {
     Static {
+        #[allow(dead_code)]
         diffuse_texture: wgpu::Texture,
+        #[allow(dead_code)]
         diffuse_view: wgpu::TextureView,
         bind_group: wgpu::BindGroup,
     },
     Animated {
+        #[allow(dead_code)]
         diffuse_textures: Vec<wgpu::Texture>,
+        #[allow(dead_code)]
         diffuse_views: Vec<wgpu::TextureView>,
         bind_groups: Vec<wgpu::BindGroup>,
         total_duration: Duration,
@@ -209,11 +213,10 @@ impl Texture {
         match self {
             Texture::Static { ref bind_group, .. } => bind_group,
             Texture::Animated {
-                diffuse_textures,
-                diffuse_views,
                 bind_groups,
                 total_duration,
                 durations,
+                ..
             } => {
                 let mut time_ms = time.num_milliseconds() % total_duration.num_milliseconds();
 
@@ -334,7 +337,7 @@ impl AliasRenderer {
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: None,
                 contents: unsafe { any_slice_as_bytes(vertices.as_slice()) },
-                usage: wgpu::BufferUsage::VERTEX,
+                usage: wgpu::BufferUsages::VERTEX,
             });
 
         let mut textures = Vec::new();

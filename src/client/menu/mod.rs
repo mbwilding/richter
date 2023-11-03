@@ -106,6 +106,7 @@ impl Menu {
     /// Return a reference to the parent of the active submenu of this menu.
     ///
     /// If this is the root menu, returns None.
+    #[allow(dead_code)]
     fn active_submenu_parent(&self) -> Result<Option<&Menu>, Error> {
         let (_, m_parent) = self.active_submenu_and_parent()?;
         Ok(m_parent)
@@ -261,6 +262,7 @@ impl Menu {
 }
 
 pub struct MenuBuilder {
+    #[allow(dead_code)]
     gfx_name: Option<String>,
     items: Vec<NamedMenuItem>,
 }

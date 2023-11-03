@@ -29,7 +29,6 @@ use std::{
     io::{Cursor, Read, Write},
     net::SocketAddr,
     path::{Path, PathBuf},
-    process::exit,
     rc::Rc,
 };
 
@@ -54,15 +53,17 @@ use richter::{
     },
 };
 use structopt::StructOpt;
+use wgpu::{CompositeAlphaMode, PresentMode};
 use winit::{
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop, EventLoopWindowTarget},
-    window::Window,
+    window::{CursorGrabMode, Window},
 };
 
 struct ClientProgram {
     vfs: Rc<Vfs>,
     cvars: Rc<RefCell<CvarRegistry>>,
+    #[allow(dead_code)]
     cmds: Rc<RefCell<CmdRegistry>>,
     console: Rc<RefCell<Console>>,
     menu: Rc<RefCell<Menu>>,
@@ -71,8 +72,8 @@ struct ClientProgram {
     window_dimensions_changed: bool,
 
     surface: wgpu::Surface,
-    swap_chain: RefCell<wgpu::SwapChain>,
     gfx_state: RefCell<GraphicsState>,
+    #[allow(dead_code)]
     ui_renderer: Rc<UiRenderer>,
 
     game: Game,
@@ -102,11 +103,17 @@ impl ClientProgram {
         )));
         input.borrow_mut().bind_defaults();
 
-        let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY);
-        let surface = unsafe { instance.create_surface(&window) };
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::PRIMARY,
+            flags: Default::default(),
+            dx12_shader_compiler: Default::default(),
+            gles_minor_version: Default::default(),
+        });
+        let surface = unsafe { instance.create_surface(&window) }.unwrap();
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::HighPerformance,
+                force_fallback_adapter: false,
                 compatible_surface: Some(&surface),
             })
             .await
@@ -116,9 +123,8 @@ impl ClientProgram {
                 &wgpu::DeviceDescriptor {
                     label: None,
                     features: wgpu::Features::PUSH_CONSTANTS
-                        | wgpu::Features::SAMPLED_TEXTURE_BINDING_ARRAY
-                        | wgpu::Features::SAMPLED_TEXTURE_ARRAY_DYNAMIC_INDEXING
-                        | wgpu::Features::SAMPLED_TEXTURE_ARRAY_NON_UNIFORM_INDEXING,
+                        .union(wgpu::Features::TEXTURE_BINDING_ARRAY)
+                        .union(wgpu::Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING),
                     limits: wgpu::Limits {
                         max_sampled_textures_per_shader_stage: 256,
                         max_uniform_buffer_binding_size: 65536,
@@ -135,16 +141,19 @@ impl ClientProgram {
             .await
             .unwrap();
         let size: Extent2d = window.inner_size().into();
-        let swap_chain = RefCell::new(device.create_swap_chain(
-            &surface,
-            &wgpu::SwapChainDescriptor {
-                usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
+
+        surface.configure(
+            &device,
+            &wgpu::SurfaceConfiguration {
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
                 format: DIFFUSE_ATTACHMENT_FORMAT,
                 width: size.width,
                 height: size.height,
-                present_mode: wgpu::PresentMode::Immediate,
+                present_mode: PresentMode::Immediate,
+                alpha_mode: CompositeAlphaMode::Auto,
+                view_formats: vec![],
             },
-        ));
+        );
 
         let vfs = Rc::new(vfs);
 
@@ -161,30 +170,32 @@ impl ClientProgram {
         // implements "exec" command
         let exec_vfs = vfs.clone();
         let exec_console = console.clone();
-        cmds.borrow_mut().insert_or_replace(
-            "exec",
-            Box::new(move |args| {
-                match args.len() {
-                    // exec (filename): execute a script file
-                    1 => {
-                        let mut script_file = match exec_vfs.open(args[0]) {
-                            Ok(s) => s,
-                            Err(e) => {
-                                return format!("Couldn't exec {}: {:?}", args[0], e);
-                            }
-                        };
+        cmds.borrow_mut()
+            .insert_or_replace(
+                "exec",
+                Box::new(move |args| {
+                    match args.len() {
+                        // exec (filename): execute a script file
+                        1 => {
+                            let mut script_file = match exec_vfs.open(args[0]) {
+                                Ok(s) => s,
+                                Err(e) => {
+                                    return format!("Couldn't exec {}: {:?}", args[0], e);
+                                }
+                            };
 
-                        let mut script = String::new();
-                        script_file.read_to_string(&mut script).unwrap();
+                            let mut script = String::new();
+                            script_file.read_to_string(&mut script).unwrap();
 
-                        exec_console.borrow().stuff_text(script);
-                        String::new()
+                            exec_console.borrow().stuff_text(script);
+                            String::new()
+                        }
+
+                        _ => format!("exec (filename): execute a script file"),
                     }
-
-                    _ => format!("exec (filename): execute a script file"),
-                }
-            }),
-        ).unwrap();
+                }),
+            )
+            .unwrap();
 
         // this will also execute config.cfg and autoexec.cfg (assuming an unmodified quake.rc)
         console.borrow().stuff_text("exec quake.rc\n");
@@ -210,7 +221,6 @@ impl ClientProgram {
             window,
             window_dimensions_changed: false,
             surface,
-            swap_chain,
             gfx_state: RefCell::new(gfx_state),
             ui_renderer,
             game,
@@ -219,32 +229,63 @@ impl ClientProgram {
     }
 
     /// Builds a new swap chain with the specified present mode and the window's current dimensions.
-    fn recreate_swap_chain(&self, present_mode: wgpu::PresentMode) {
+    fn recreate_swap_chain(&self, _present_mode: PresentMode) {
+        // Get the current size of the window
         let winit::dpi::PhysicalSize { width, height } = self.window.inner_size();
-        let swap_chain = self.gfx_state.borrow().device().create_swap_chain(
-            &self.surface,
-            &wgpu::SwapChainDescriptor {
-                usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
+
+        // Configure the surface with the new parameters
+        self.surface.configure(
+            &self.gfx_state.borrow().device(),
+            &wgpu::SurfaceConfiguration {
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
                 format: DIFFUSE_ATTACHMENT_FORMAT,
                 width,
                 height,
-                present_mode,
+                present_mode: PresentMode::Immediate,
+                alpha_mode: CompositeAlphaMode::Auto,
+                view_formats: vec![],
             },
         );
-        let _ = self.swap_chain.replace(swap_chain);
     }
 
     fn render(&mut self) {
-        let swap_chain_output = self.swap_chain.borrow_mut().get_current_frame().unwrap();
+        // Acquire the next frame from the surface
+        let frame = match self.surface.get_current_texture() {
+            Ok(frame) => frame,
+            Err(wgpu::SurfaceError::Lost) => {
+                // The surface is lost and needs to be recreated
+                self.recreate_swap_chain(PresentMode::AutoNoVsync);
+                return;
+            }
+            Err(wgpu::SurfaceError::OutOfMemory) => {
+                // Out of memory error
+                panic!("Out of memory");
+            }
+            Err(e) => {
+                // Other errors such as `Outdated`, `Timeout`, etc, typically you can just skip the frame
+                eprintln!("Failed to acquire next swap chain texture: {:?}", e);
+                return;
+            }
+        };
+        let view = frame
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
+
+        // Get the current size of the window
         let winit::dpi::PhysicalSize { width, height } = self.window.inner_size();
+
+        // Call the game's render function with the necessary parameters
         self.game.render(
             &self.gfx_state.borrow(),
-            &swap_chain_output.output.view,
+            &view,
             width,
             height,
             &self.console.borrow(),
             &self.menu.borrow(),
         );
+
+        // After rendering, you must call `present` on the `SurfaceTexture` to show it on the screen
+        frame.present();
     }
 }
 
@@ -292,7 +333,7 @@ impl Program for ClientProgram {
 
         match self.input.borrow().focus() {
             InputFocus::Game => {
-                if let Err(e) = self.window.set_cursor_grab(true) {
+                if let Err(e) = self.window.set_cursor_grab(CursorGrabMode::Locked) {
                     // This can happen if the window is running in another
                     // workspace. It shouldn't be considered an error.
                     log::debug!("Couldn't grab cursor: {}", e);
@@ -302,7 +343,7 @@ impl Program for ClientProgram {
             }
 
             _ => {
-                if let Err(e) = self.window.set_cursor_grab(false) {
+                if let Err(e) = self.window.set_cursor_grab(CursorGrabMode::None) {
                     log::debug!("Couldn't release cursor: {}", e);
                 };
                 self.window.set_cursor_visible(true);
@@ -350,7 +391,7 @@ fn main() {
     env_logger::init();
     let opt = Opt::from_args();
 
-    let event_loop = EventLoop::new();
+    let event_loop = EventLoop::new().unwrap();
     let window = {
         #[cfg(target_os = "windows")]
         {
@@ -431,7 +472,7 @@ fn main() {
 
     let mut host = Host::new(client_program);
 
-    event_loop.run(move |event, _target, control_flow| {
-        host.handle_event(event, _target, control_flow);
+    let _ = event_loop.run(move |event, window_target| {
+        host.handle_event(event, window_target, &mut ControlFlow::Poll);
     });
 }

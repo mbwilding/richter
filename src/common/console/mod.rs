@@ -175,6 +175,7 @@ struct Cvar {
     val: String,
 
     // If true, this variable should be archived in vars.rc
+    #[allow(dead_code)]
     archive: bool,
 
     // If true:
@@ -330,7 +331,7 @@ impl CvarRegistry {
     {
         trace!("cvar assignment: {} {}", name.as_ref(), value.as_ref());
         let mut cvars = self.cvars.borrow_mut();
-        let mut cvar = cvars
+        let cvar = cvars
             .get_mut(name.as_ref())
             .ok_or(ConsoleError::NoSuchCvar(name.as_ref().to_owned()))?;
         cvar.val = value.as_ref().to_owned();

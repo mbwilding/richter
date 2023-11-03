@@ -38,10 +38,9 @@ where
     let spirv = compiler
         .compile_into_spirv(source.as_ref(), kind, name.as_ref(), "main", None)
         .unwrap();
-    device.create_shader_module(&wgpu::ShaderModuleDescriptor {
+    device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some(name.as_ref()),
         source: wgpu::ShaderSource::SpirV(spirv.as_binary().into()),
-        flags: wgpu::ShaderFlags::empty(),
     })
 }
 
@@ -94,7 +93,7 @@ pub trait Pipeline {
 
     fn vertex_push_constant_range() -> wgpu::PushConstantRange {
         let range = wgpu::PushConstantRange {
-            stages: wgpu::ShaderStage::VERTEX,
+            stages: wgpu::ShaderStages::VERTEX,
             range: 0..size_of::<Self::VertexPushConstants>() as u32
                 + size_of::<Self::SharedPushConstants>() as u32,
         };
@@ -104,7 +103,7 @@ pub trait Pipeline {
 
     fn fragment_push_constant_range() -> wgpu::PushConstantRange {
         let range = wgpu::PushConstantRange {
-            stages: wgpu::ShaderStage::FRAGMENT,
+            stages: wgpu::ShaderStages::FRAGMENT,
             range: size_of::<Self::VertexPushConstants>() as u32
                 ..size_of::<Self::VertexPushConstants>() as u32
                     + size_of::<Self::SharedPushConstants>() as u32
@@ -232,7 +231,12 @@ pub trait Pipeline {
             fragment: Some(wgpu::FragmentState {
                 module: &fragment_shader,
                 entry_point: "main",
-                targets: &Self::color_target_states(),
+                // TODO: Correct this
+                targets: Self::color_target_states()
+                    .into_iter()
+                    .map(Some)
+                    .collect::<Vec<_>>()
+                    .as_slice(),
             }),
             multisample: wgpu::MultisampleState {
                 count: sample_count,
@@ -240,6 +244,7 @@ pub trait Pipeline {
                 alpha_to_coverage_enabled: false,
             },
             depth_stencil: Self::depth_stencil_state(),
+            multiview: None,
         });
 
         (pipeline, bind_group_layouts)
@@ -290,7 +295,12 @@ pub trait Pipeline {
             fragment: Some(wgpu::FragmentState {
                 module: &fragment_shader,
                 entry_point: "main",
-                targets: &Self::color_target_states(),
+                // TODO: Correct this
+                targets: Self::color_target_states()
+                    .into_iter()
+                    .map(Some)
+                    .collect::<Vec<_>>()
+                    .as_slice(),
             }),
             multisample: wgpu::MultisampleState {
                 count: sample_count,
@@ -298,6 +308,7 @@ pub trait Pipeline {
                 alpha_to_coverage_enabled: false,
             },
             depth_stencil: Self::depth_stencil_state(),
+            multiview: None,
         });
 
         pipeline
@@ -337,7 +348,7 @@ pub trait Pipeline {
                     data
                 );
 
-                pass.set_push_constants(wgpu::ShaderStage::VERTEX, vpc_offset, d);
+                pass.set_push_constants(wgpu::ShaderStages::VERTEX, vpc_offset, d);
             }
         }
 
@@ -356,7 +367,7 @@ pub trait Pipeline {
                 );
 
                 pass.set_push_constants(
-                    wgpu::ShaderStage::VERTEX | wgpu::ShaderStage::FRAGMENT,
+                    wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                     spc_offset,
                     d,
                 );
@@ -377,7 +388,7 @@ pub trait Pipeline {
                     data
                 );
 
-                pass.set_push_constants(wgpu::ShaderStage::FRAGMENT, fpc_offset, d);
+                pass.set_push_constants(wgpu::ShaderStages::FRAGMENT, fpc_offset, d);
             }
         }
     }

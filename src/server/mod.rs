@@ -74,9 +74,11 @@ pub enum ClientState {
 
 pub struct ClientActive {
     /// If true, client may execute any command.
+    #[allow(dead_code)]
     privileged: bool,
 
     /// ID of the entity controlled by this client.
+    #[allow(dead_code)]
     entity_id: EntityId,
 }
 
@@ -130,6 +132,7 @@ impl ClientSlots {
 /// Server state that persists between levels.
 pub struct SessionPersistent {
     client_slots: ClientSlots,
+    #[allow(dead_code)]
     flags: SessionFlags,
 }
 
@@ -322,6 +325,7 @@ pub struct LevelState {
     /// This contains the entities and world geometry.
     world: World,
 
+    #[allow(dead_code)]
     datagram: ArrayVec<u8, MAX_DATAGRAM>,
 }
 
@@ -852,7 +856,7 @@ impl LevelState {
             frame_time
         };
 
-        drop(ent);
+        // drop(ent);
         if !move_time.is_zero() {
             self.move_push(ent_id, frame_time, move_time)?;
         }
@@ -951,7 +955,7 @@ impl LevelState {
 
         self.think(ent_id, frame_time)?;
 
-        todo!("SV_CheckWaterTransition");
+        // TODO SV_CheckWaterTransition
 
         Ok(())
     }
@@ -959,7 +963,7 @@ impl LevelState {
     pub fn move_push(
         &mut self,
         ent_id: EntityId,
-        frame_time: Duration,
+        _frame_time: Duration,
         move_time: Duration,
     ) -> Result<(), ProgsError> {
         let ent = self.world.entity_mut(ent_id)?;
@@ -974,7 +978,7 @@ impl LevelState {
         }
 
         let move_time_f = duration_to_f32(move_time);
-        let move_vector = vel * move_time_f;
+        let _move_vector = vel * move_time_f;
         // TODO let mins =
         todo!()
     }

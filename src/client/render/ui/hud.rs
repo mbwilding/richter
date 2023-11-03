@@ -1,4 +1,4 @@
-use std::{collections::HashMap, iter::FromIterator};
+use std::collections::HashMap;
 
 use crate::{
     client::{
@@ -18,8 +18,6 @@ use crate::{
         wad::QPic,
     },
 };
-
-use arrayvec::ArrayVec;
 use chrono::Duration;
 use num::FromPrimitive as _;
 use strum::IntoEnumIterator as _;
@@ -96,7 +94,7 @@ impl std::fmt::Display for HudTextureId {
     }
 }
 
-const WEAPON_ID_NAMES: [&'static str; 7] = [
+const WEAPON_ID_NAMES: [&str; 7] = [
     "SHOTGUN", "SSHOTGUN", "NAILGUN", "SNAILGUN", "RLAUNCH", "SRLAUNCH", "LIGHTNG",
 ];
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, FromPrimitive, EnumIter)]
@@ -133,7 +131,7 @@ impl std::fmt::Display for WeaponFrame {
     }
 }
 
-const AMMO_ID_NAMES: [&'static str; 4] = ["SHELLS", "NAILS", "ROCKET", "CELLS"];
+const AMMO_ID_NAMES: [&str; 4] = ["SHELLS", "NAILS", "ROCKET", "CELLS"];
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, FromPrimitive, EnumIter)]
 enum AmmoId {
     Shells = 0,
@@ -148,7 +146,7 @@ impl std::fmt::Display for AmmoId {
     }
 }
 
-const ITEM_ID_NAMES: [&'static str; 6] = ["KEY1", "KEY2", "INVIS", "INVULN", "SUIT", "QUAD"];
+const ITEM_ID_NAMES: [&str; 6] = ["KEY1", "KEY2", "INVIS", "INVULN", "SUIT", "QUAD"];
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, FromPrimitive, EnumIter)]
 enum ItemId {
     Key1 = 0,

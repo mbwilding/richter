@@ -32,6 +32,7 @@ use structopt::StructOpt;
 #[derive(Debug, StructOpt)]
 struct Opt {
     #[structopt(short, long)]
+    #[allow(dead_code)]
     verbose: bool,
 
     #[structopt(long)]
@@ -44,7 +45,7 @@ struct Opt {
     output_dir: Option<PathBuf>,
 }
 
-const VERSION: &'static str = "
+const VERSION: &str = "
 unpak 0.1
 Copyright © 2020 Cormac O'Brien
 Released under the terms of the MIT License

@@ -32,6 +32,7 @@ use failure::{Backtrace, Context, Error, Fail};
 
 // see definition of lumpinfo_t:
 // https://github.com/id-Software/Quake/blob/master/WinQuake/wad.h#L54-L63
+#[allow(dead_code)]
 const LUMPINFO_SIZE: usize = 32;
 const MAGIC: u32 = 'W' as u32 | ('A' as u32) << 8 | ('D' as u32) << 16 | ('2' as u32) << 24;
 

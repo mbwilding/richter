@@ -383,13 +383,13 @@ mod test {
 
     #[test]
     fn test_textfield() {
-        let MAX_LEN = 10;
+        let max_len = 10;
         let s = Rc::new(RefCell::new("before".to_owned()));
         let s2 = s.clone();
 
-        let mut tf = TextField::new(
+        let tf = TextField::new(
             Some("default"),
-            Some(MAX_LEN),
+            Some(max_len),
             Box::new(move |x| {
                 s2.replace(x.to_string());
             }),
@@ -411,10 +411,10 @@ mod test {
 
         assert_eq!(tf.text(), *s.borrow());
 
-        for _ in 0..2 * MAX_LEN {
+        for _ in 0..2 * max_len {
             tf.insert('x');
         }
 
-        assert_eq!(tf.len(), MAX_LEN);
+        assert_eq!(tf.len(), max_len);
     }
 }

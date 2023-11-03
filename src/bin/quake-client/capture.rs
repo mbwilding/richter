@@ -1,8 +1,8 @@
+use futures::executor::block_on;
 use std::{
     cell::RefCell,
     fs::File,
     io::BufWriter,
-    num::NonZeroU32,
     path::{Path, PathBuf},
     rc::Rc,
 };
@@ -56,7 +56,7 @@ impl Capture {
         let buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("capture buffer"),
             size: (row_width * capture_size.height * BYTES_PER_PIXEL) as u64,
-            usage: wgpu::BufferUsage::COPY_DST | wgpu::BufferUsage::MAP_READ,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
             mapped_at_creation: false,
         });
 
@@ -78,7 +78,7 @@ impl Capture {
                 buffer: &self.buffer,
                 layout: wgpu::ImageDataLayout {
                     offset: 0,
-                    bytes_per_row: Some(NonZeroU32::new(self.row_width * BYTES_PER_PIXEL).unwrap()),
+                    bytes_per_row: Some(self.row_width * BYTES_PER_PIXEL),
                     rows_per_image: None,
                 },
             },
@@ -90,38 +90,45 @@ impl Capture {
     where
         P: AsRef<Path>,
     {
-        let mut data = Vec::new();
+        let data = Vec::new();
         {
-            // map the buffer
-            // TODO: maybe make this async so we don't force the whole program to block
-            let slice = self.buffer.slice(..);
-            let map_future = slice.map_async(wgpu::MapMode::Read);
-            device.poll(wgpu::Maintain::Wait);
-            futures::executor::block_on(map_future).unwrap();
+            let slice = self.buffer.slice(..); // Slice the whole buffer
+            let (tx, rx) = futures::channel::oneshot::channel(); // Create a oneshot channel for async communication
 
-            // copy pixel data
-            let mapped = slice.get_mapped_range();
-            for row in mapped.chunks(self.row_width as usize * BYTES_PER_PIXEL as usize) {
-                // don't copy padding
-                for pixel in
-                    (&row[..self.capture_size.width as usize * BYTES_PER_PIXEL as usize]).chunks(4)
-                {
-                    // swap BGRA->RGBA
-                    data.extend_from_slice(&[pixel[2], pixel[1], pixel[0], pixel[3]]);
+            // Start the mapping process
+            slice.map_async(wgpu::MapMode::Read, move |v| tx.send(v).unwrap());
+
+            // You need to keep the device active until the mapping is complete
+            device.poll(wgpu::Maintain::Wait);
+
+            // Wait for the mapping to be complete
+            match block_on(rx) {
+                Ok(Ok(())) => {
+                    // Mapping was successful, proceed with getting mapped range and the rest of the code
+                }
+                Ok(Err(e)) => {
+                    // Handle the BufferAsyncError if mapping failed
+                    eprintln!("Buffer mapping failed: {:?}", e);
+                    return;
+                }
+                Err(_) => {
+                    // The oneshot channel was cancelled, handle this error case
+                    eprintln!("Oneshot channel was cancelled.");
+                    return;
                 }
             }
         }
-        self.buffer.unmap();
 
-        let f = File::create(path).unwrap();
-        let mut png_encoder = png::Encoder::new(
-            BufWriter::new(f),
-            self.capture_size.width,
-            self.capture_size.height,
-        );
-        png_encoder.set_color(png::ColorType::RGBA);
-        png_encoder.set_depth(png::BitDepth::Eight);
-        let mut writer = png_encoder.write_header().unwrap();
-        writer.write_image_data(&data).unwrap();
+        // Write data to file
+        let file = File::create(path).expect("Failed to create file");
+        let writer = BufWriter::new(file);
+        let mut encoder =
+            png::Encoder::new(writer, self.capture_size.width, self.capture_size.height);
+        encoder.set_color(png::ColorType::Rgba);
+        encoder.set_depth(png::BitDepth::Eight);
+        let mut png_writer = encoder.write_header().expect("Failed to write PNG header");
+        png_writer
+            .write_image_data(&data)
+            .expect("Failed to write PNG data");
     }
 }

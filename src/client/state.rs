@@ -35,7 +35,7 @@ use rand::{
 };
 use rodio::OutputStreamHandle;
 
-const CACHED_SOUND_NAMES: &[&'static str] = &[
+const CACHED_SOUND_NAMES: &[&str] = &[
     "hknight/hit.wav",
     "weapons/r_exp3.wav",
     "weapons/ric1.wav",

@@ -20,7 +20,10 @@ use std::{cell::RefCell, rc::Rc};
 use crate::common::console::Console;
 
 use failure::Error;
-use winit::event::{ElementState, Event, KeyboardInput, VirtualKeyCode as Key, WindowEvent};
+use winit::{
+    event::{Event, KeyEvent, WindowEvent},
+    keyboard::{KeyCode, PhysicalKey},
+};
 
 pub struct ConsoleInput {
     console: Rc<RefCell<Console>>,
@@ -34,29 +37,38 @@ impl ConsoleInput {
     pub fn handle_event<T>(&self, event: Event<T>) -> Result<(), Error> {
         match event {
             Event::WindowEvent { event, .. } => match event {
-                WindowEvent::ReceivedCharacter(c) => self.console.borrow_mut().send_char(c),
-
-                WindowEvent::KeyboardInput {
-                    input:
-                        KeyboardInput {
-                            virtual_keycode: Some(key),
-                            state: ElementState::Pressed,
-                            ..
-                        },
-                    ..
-                } => match key {
-                    Key::Up => self.console.borrow_mut().history_up(),
-                    Key::Down => self.console.borrow_mut().history_down(),
-                    Key::Left => self.console.borrow_mut().cursor_left(),
-                    Key::Right => self.console.borrow_mut().cursor_right(),
-                    Key::Grave => self.console.borrow_mut().stuff_text("toggleconsole\n"),
-                    _ => (),
+                WindowEvent::KeyboardInput { event, .. } => match event {
+                    KeyEvent {
+                        state,
+                        physical_key,
+                        ..
+                    } => {
+                        if state.is_pressed() {
+                            use KeyCode::*;
+                            let mut console = self.console.borrow_mut();
+                            match physical_key {
+                                PhysicalKey::Code(k) => match k {
+                                    ArrowUp => console.history_up(),
+                                    ArrowDown => console.history_down(),
+                                    ArrowLeft => console.cursor_left(),
+                                    ArrowRight => console.cursor_right(),
+                                    Backquote => console.stuff_text("toggleconsole\n"),
+                                    _ => {
+                                        if let Some(text) = event.text {
+                                            if let Some(c) = text.chars().next() {
+                                                console.send_char(c);
+                                            }
+                                        }
+                                    }
+                                },
+                                _ => {}
+                            }
+                        }
+                    }
                 },
-
-                _ => (),
+                _ => {}
             },
-
-            _ => (),
+            _ => {}
         }
 
         Ok(())

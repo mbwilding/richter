@@ -20,7 +20,10 @@ use std::{cell::RefCell, rc::Rc};
 use crate::{client::menu::Menu, common::console::Console};
 
 use failure::Error;
-use winit::event::{ElementState, Event, KeyboardInput, VirtualKeyCode as Key, WindowEvent};
+use winit::{
+    event::{Event, KeyEvent, WindowEvent},
+    keyboard::{KeyCode, PhysicalKey},
+};
 
 pub struct MenuInput {
     menu: Rc<RefCell<Menu>>,
@@ -35,38 +38,39 @@ impl MenuInput {
     pub fn handle_event<T>(&self, event: Event<T>) -> Result<(), Error> {
         match event {
             Event::WindowEvent { event, .. } => match event {
-                WindowEvent::ReceivedCharacter(_) => (),
-
-                WindowEvent::KeyboardInput {
-                    input:
-                        KeyboardInput {
-                            virtual_keycode: Some(key),
-                            state: ElementState::Pressed,
-                            ..
-                        },
-                    ..
-                } => match key {
-                    Key::Escape => {
-                        if self.menu.borrow().at_root() {
-                            self.console.borrow().stuff_text("togglemenu\n");
-                        } else {
-                            self.menu.borrow().back()?;
+                WindowEvent::KeyboardInput { event, .. } => match event {
+                    KeyEvent {
+                        state,
+                        physical_key,
+                        ..
+                    } => {
+                        if state.is_pressed() {
+                            use KeyCode::*;
+                            let menu = self.menu.borrow();
+                            match physical_key {
+                                PhysicalKey::Code(k) => match k {
+                                    Escape => {
+                                        if menu.at_root() {
+                                            self.console.borrow().stuff_text("togglemenu\n");
+                                        } else {
+                                            menu.back()?;
+                                        }
+                                    }
+                                    Enter => menu.activate()?,
+                                    ArrowUp => menu.prev()?,
+                                    ArrowDown => menu.next()?,
+                                    ArrowLeft => menu.left()?,
+                                    ArrowRight => menu.right()?,
+                                    _ => {}
+                                },
+                                _ => {}
+                            }
                         }
                     }
-
-                    Key::Up => self.menu.borrow().prev()?,
-                    Key::Down => self.menu.borrow().next()?,
-                    Key::Return => self.menu.borrow().activate()?,
-                    Key::Left => self.menu.borrow().left()?,
-                    Key::Right => self.menu.borrow().right()?,
-
-                    _ => (),
                 },
-
-                _ => (),
+                _ => {}
             },
-
-            _ => (),
+            _ => {}
         }
 
         Ok(())
